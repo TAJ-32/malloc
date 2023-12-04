@@ -14,7 +14,7 @@ ex:
 
 .PHONE: debug
 debug: 
-	gdb --args env LD_PRELOAD=./my-malloc.so ls
+	gdb --args env LD_PRELOAD=./my-malloc.so ./test-malloc
 
 .PHONE: clean
 clean:
