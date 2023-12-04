@@ -73,59 +73,45 @@ void *malloc(size_t size) {
 
 		head -> next_alloc = NULL;
 		head -> prev_alloc = NULL;
+
+		//if the break is sufficiently greater than the amount allocated 
+		struct allocation *chunk = create_chunk(size, init_prgrm_brk + sizeof(struct allocation));
+
+		chunk->next_alloc = NULL;
+		chunk->prev_alloc = NULL;
+
+		head = chunk;
+
+		return chunk;
+
 	}
+ 	else { //linked list has stuff in it
+		//char *bot_of_heap = head->ptr - sizeof(head); //bottom of the heap
+		int amt_allocated = 0;
+		struct allocation *temp = head;
+		amt_allocated += temp -> user_size;
 
-
-	struct allocation *curr = head;
-	struct allocation *prev = curr->prev_alloc;
-
-	while (curr != NULL) {
-		//if there is a chunk of memory big enough for us to put an allocation
-		if (size <= curr->user_size) {
-			//if there is enough to split for another allocation to be made after this, we want to split
-			//we do this so we can populate our list with enough free chunks
-			if (size + sizeof(struct allocation) + ALIGN_SIZE <= curr->user_size) {
-				curr = split(curr, size); //logistically, is this how it would be done or should I return the new free chunk?
-							  //will the free_chunk I make in split get lost once that function returns or because i set it
-							  //as the next_alloc for curr it will stay?
-			}	
-			else { //there isn't enough memory to split more so current block is good for returning
-				return curr + sizeof(struct allocation); 
-			}
+		while (temp->next_alloc != NULL) {
+			temp = temp -> next_alloc;
+			amt_allocated += temp -> user_size;
 		}
-		prev = curr;
-		curr = curr->next_alloc;
+
+
+		if (init_prgrm_brk + amt_allocated + size > break_loc) {
+			sbrk(MIN_SBRK + size);
+		}
+
+				
+		struct allocation *chunk = create_chunk(size, temp + temp->user_size + sizeof(struct allocation)); //this will temporarily set the chunk to some pointer that may or may not be accurate
+
+		chunk = add_chunk(chunk, size); //this will put it in the right place
+
+		return chunk;
 	}
-	//if we get here, there was not any usable memory so we need to sbrk
-	
 
-	if ((curr = sbrk(MIN_SBRK + size)) == (void *) -1) {
-		perror("malloc error");
-		return NULL;
-	} 
-	break_loc += MIN_SBRK + size;
-	curr->next_alloc = NULL;
-	curr->prev_alloc = prev;
+	return 0;
 
-	return malloc(size); //gotta do malloc again now that we have moved the break up
 }
-
-struct allocation *split(struct allocation *curr, size_t size) {
-	
-	struct allocation *free_chunk = curr + sizeof(struct allocation) + size;// or should i set it to curr + sizeof(struct) + curr->user_size / 2
-
-	curr->user_size -= size; //or should I split the current free chunk's size in half and then set it's next_alloc to a free chunk that takes up the next bit of memory
-	
-	curr->next_alloc = free_chunk;
-
-	free_chunk->prev_alloc = curr;
-
-	free_chunk->next_alloc = NULL;
-
-	return curr;
-}
-
-
 
 struct allocation *add_chunk(struct allocation *chunk, size_t size) {
 		struct allocation *curr = head;
@@ -349,39 +335,58 @@ struct allocation *create_chunk(size_t size, void *ptr) {
 
 
 
+
+ 
+
+
+
 /*
- *
- *	else { //linked list has stuff in it
-		//char *bot_of_heap = head->ptr - sizeof(head); //bottom of the heap
-		int amt_allocated = 700;
-		struct allocation *temp = head;
-		amt_allocated += temp -> user_size;
+ *	struct allocation *curr = head;
+	struct allocation *prev = curr->prev_alloc;
 
-		while (temp->next_alloc != NULL) {
-			temp = temp -> next_alloc;
-			amt_allocated += temp -> user_size;
+	while (curr != NULL) {
+		//if there is a chunk of memory big enough for us to put an allocation
+		if (size <= curr->user_size) {
+			//if there is enough to split for another allocation to be made after this, we want to split
+			//we do this so we can populate our list with enough free chunks
+			if (size + sizeof(struct allocation) + ALIGN_SIZE <= curr->user_size) {
+				curr = split(curr, size); //logistically, is this how it would be done or should I return the new free chunk?
+							  //will the free_chunk I make in split get lost once that function returns or because i set it
+							  //as the next_alloc for curr it will stay?
+			}	
+			else { //there isn't enough memory to split more so current block is good for returning
+				return curr + sizeof(struct allocation); 
+			}
 		}
-
-
-		if (init_prgrm_brk + amt_allocated + size > break_loc) {
-			sbrk(5000);
-		}
-
-		
-		//if the break is sufficiently greater than the amount allocated 
-		if (init_prgrm_brk + amt_allocated + size < break_loc){ 
-			struct allocation *chunk = add_chunk(chunk, size); //actually adds it to the linked_list and changes all the next_alloc, prev_alloc, and ptr
-		}
-		else { //need to move the break up
-			sbrk(5000);
-			struct allocation *chunk = add_chunk(chunk, size);
-		}
-		
-		
-		struct allocation *chunk = create_chunk(size, temp + temp->user_size + sizeof(struct allocation)); //this will temporarily set the chunk to some pointer that may or may not be accurate
-
-		chunk = add_chunk(chunk, size); //this will put it in the right place
-
-		return chunk;
+		prev = curr;
+		curr = curr->next_alloc;
 	}
+	//if we get here, there was not any usable memory so we need to sbrk
+	
+
+	if ((curr = sbrk(MIN_SBRK + size)) == (void *) -1) {
+		perror("malloc error");
+		return NULL;
+	} 
+	break_loc += MIN_SBRK + size;
+	curr->next_alloc = NULL;
+	curr->prev_alloc = prev;
+
+	return malloc(size); //gotta do malloc again now that we have moved the break up
+}
+
+struct allocation *split(struct allocation *curr, size_t size) {
+	
+	struct allocation *free_chunk = curr + sizeof(struct allocation) + size;// or should i set it to curr + sizeof(struct) + curr->user_size / 2
+
+	curr->user_size -= size; //or should I split the current free chunk's size in half and then set it's next_alloc to a free chunk that takes up the next bit of memory
+	
+	curr->next_alloc = free_chunk;
+
+	free_chunk->prev_alloc = curr;
+
+	free_chunk->next_alloc = NULL;
+
+	return curr;
+}
 */
