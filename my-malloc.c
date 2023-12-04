@@ -25,8 +25,7 @@ struct allocation *add_chunk(struct allocation *chunk, size_t size);
 
 struct allocation *split(struct allocation *curr, size_t size);
 
-struct allocation { //don't need this ptr field, struct pointer you're using will be the pointer you are using
-	//char *ptr; //should this be an void pointer or char ptr because that will be size 1 byte which is what we want in the context of malloc
+struct allocation { 
 	int user_size;
 	int act_size; //actual size of whole chunk, sbrk_size + meta_size;
 	int meta_size; //size of the struct in the chunk of memory
@@ -46,18 +45,10 @@ struct l_list *create_list(void);
 
 struct allocation *create_chunk(size_t size, void *ptr);
 
-//static struct l_list *linked_list = create_list(); //how can I allocate memory to this
-						   //
 static struct allocation *head = NULL;
 
 
-/*
-struct linked_list {
-	//int size;
-	//struct *allocation head; //head of the Linked List
-}
-*/
-//we need to be making the metadata for the next allocation before it is even called
+//do we need to be making the metadata for the next allocation before it is even called
 void *malloc(size_t size) {
 
 	break_loc = sbrk(0);
@@ -65,9 +56,13 @@ void *malloc(size_t size) {
 
 	//put all this head == NULL stuff in an initialize function
 	if (head == NULL) { //if malloc hasn't been called yet basically so nothing is in linked_list so the head is NULL
+
 		//this int will give us the beginning of the program break (so where the heap begins)
+
 		init_prgrm_brk = sbrk(0); //char *init_prgrm_brk = sbrk(0); //should this be char * or void * (will this change globally so I can use it in the head has been freed and I want to put something in that blank spot case?
+
 		head = sbrk(MIN_SBRK + size); //arbitrary size I chose. the head will start as the heap itself. this is how we creat the linked list. actually shouldo do sbrk(5000 + size);
+
 		break_loc += (MIN_SBRK + size);
 		head -> user_size = MIN_SBRK + size - sizeof(struct allocation); //amount of free space
 
