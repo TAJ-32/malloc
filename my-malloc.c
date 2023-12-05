@@ -119,13 +119,13 @@ void *malloc(size_t size) {
 			while (curr->next_alloc != NULL) { //traverse through the linked list until you get to last non-NULL node
 				if ((char *) (curr->next_alloc)-((char *) curr+sizeof(struct allocation)+curr->user_size) >= size) { //if space between current and next alloc
 					chunk = (struct allocation *) ((char *) curr + sizeof(struct allocation) + curr->user_size);
-					
+					chunk->user_size = size;	
 					(curr->next_alloc)->prev_alloc = chunk;
 					chunk->next_alloc = curr->next_alloc;
 					curr->next_alloc = chunk;
 					chunk->prev_alloc = curr;
 
-					return chunk; //return it before it can change it to being added to end of linked list
+					return (char *) chunk + sizeof(struct allocation); //return it before it can change it to being added to end of linked list
 				}
 				else {
 					curr = curr->next_alloc;
@@ -153,7 +153,7 @@ void free(void *ptr) {
 
 //	ptr = (char *) ptr;
 
-	while (chunk_to_free != ptr) {
+	while ((char *) chunk_to_free != ((char *) ptr - sizeof(struct allocation))) {
 		chunk_to_free = chunk_to_free -> next_alloc;
 	}
 	
@@ -175,7 +175,7 @@ void free(void *ptr) {
 		//should I cast the void *ptr to char *
 
 		//would i start memsetting from the ptr or ptr - sizeof(chunk)
-		memset((char *) ptr, '\0', sizeof(struct allocation) + chunk_to_free->user_size);
+		//memset((char *) ptr, '\0', sizeof(struct allocation) + chunk_to_free->user_size);
 	}
 
 	return;
