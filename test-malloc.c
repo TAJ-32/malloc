@@ -8,11 +8,11 @@ int main(int argc, char *argv[])
 	*a = 'h';
 
 	char *b = malloc(2500);
-	*b = 'g';
+//	*b = 'g';
 
-	free(a);
+//	free(a);
 
-	char *c = malloc(1000);
+//	char *c = malloc(1000);
 	//c = "meh";
 
 

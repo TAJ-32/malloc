@@ -51,10 +51,12 @@ static struct allocation *head = NULL;
 //do we need to be making the metadata for the next allocation before it is even called
 void *malloc(size_t size) {
 
-	break_loc = sbrk(0);
-	//struct allocation *chunk = create_chunk(size); can't do this until heap is initialized
+	/*
+	 *1. Make the head NULL so that you have the beginning of the linked list as the metadata and itll point to nothing both direction.
+	 *2. For every other allocation, set the struct pointer to the last pointer+sizeof(struct)+user_size
+	 *
+	 */
 
-	//put all this head == NULL stuff in an initialize function
 	if (head == NULL) { //if malloc hasn't been called yet basically so nothing is in linked_list so the head is NULL
 
 		//this int will give us the beginning of the program break (so where the heap begins)
@@ -63,21 +65,20 @@ void *malloc(size_t size) {
 
 		head = sbrk(MIN_SBRK + size); //arbitrary size I chose. the head will start as the heap itself. this is how we creat the linked list. actually shouldo do sbrk(5000 + size);
 
-		break_loc += (MIN_SBRK + size);
-		head -> user_size = MIN_SBRK + size - sizeof(struct allocation); //amount of free space
+		break_loc = (char *) head + (MIN_SBRK + size);
+		//head -> user_size = MIN_SBRK + size - sizeof(struct allocation); //amount of free space
 
-		head -> next_alloc = NULL;
-		head -> prev_alloc = NULL;
+		head->user_size = size;
 
-		//if the break is sufficiently greater than the amount allocated 
-		struct allocation *chunk = create_chunk(size, init_prgrm_brk + sizeof(struct allocation));
+		head->next_alloc = NULL;
+		head->prev_alloc = NULL;
 
-		chunk->next_alloc = NULL;
-		chunk->prev_alloc = NULL;
 
-		head = chunk;
+		//MAKE THE POINTERS YOU ARE DEALING WITH THE POINTER TO THE BEGINNING OF THE METADATA. THE ONLY TIME YOU DEAL WITH THE POINTER
+		//THE USER NEEDS IS ON A RETURN. SO JUST DO CHUNK + 32 on those calls but chunk will refer to the beginning of the metadata
 
-		return chunk;
+
+		return (char *) head + sizeof(struct allocation);
 
 	}
  	else { //linked list has stuff in it
@@ -96,12 +97,10 @@ void *malloc(size_t size) {
 			sbrk(MIN_SBRK + size);
 		}
 
-				
-		struct allocation *chunk = create_chunk(size, temp + temp->user_size + sizeof(struct allocation)); //this will temporarily set the chunk to some pointer that may or may not be accurate
+		struct allocation *chunk = temp; //how do I allocate memory to this. And should it be initialized to NULL;
 
 		chunk = add_chunk(chunk, size); //this will put it in the right place
-
-		return chunk;
+		return (char *) chunk + sizeof(struct allocation);
 	}
 
 	return 0;
@@ -110,7 +109,7 @@ void *malloc(size_t size) {
 
 struct allocation *add_chunk(struct allocation *chunk, size_t size) {
 		struct allocation *curr = head;
-		if (((char *) head != init_prgrm_brk + sizeof(struct allocation)) && (size <= (char *) head-sizeof(struct allocation)-init_prgrm_brk)) { //if the head was freed and now the space at the beginning of the heap is open. We will put it right at the start of the heap
+		if (((char *) head != init_prgrm_brk) && (size <= (char *) head-init_prgrm_brk)) { //if the head was freed and now the space at the beginning of the heap is open. We will put it right at the start of the heap
 			head->prev_alloc = chunk;
 			chunk->next_alloc = head;
 			chunk->prev_alloc = NULL;
@@ -118,7 +117,7 @@ struct allocation *add_chunk(struct allocation *chunk, size_t size) {
 			//this will put it at beginning of prgrm brk so that every other time the if space between current and next alloc case will be used
 
 			//how to deal with this ptr type mismatch
-			chunk = (struct allocation *) init_prgrm_brk + sizeof(struct allocation);
+			chunk = (struct allocation *) init_prgrm_brk;
 			head = chunk;
 			
 			//chunk->ptr = chunk->next_alloc->ptr - sizeof(chunk->next_alloc) - size; //this is if you put it right before the last allocated chunk and there is null space before it so this will happen multiple times
@@ -126,27 +125,27 @@ struct allocation *add_chunk(struct allocation *chunk, size_t size) {
 			return chunk;
 		}
 		else {
-			while (curr -> next_alloc != NULL) { //traverse through the linked list until you get to last non-NULL node
-				if ((curr->next_alloc-sizeof(curr->next_alloc))-(curr+curr->user_size) >= size) { //if space between current and next alloc
-					(curr -> next_alloc) -> prev_alloc = chunk;
-					chunk -> next_alloc = curr -> next_alloc;
-					curr -> next_alloc = chunk;
-					chunk -> prev_alloc = curr;
+			while (curr->next_alloc != NULL) { //traverse through the linked list until you get to last non-NULL node
+				if ((curr->next_alloc)-(curr+sizeof(struct allocation)+curr->user_size) >= size) { //if space between current and next alloc
+					(curr->next_alloc)->prev_alloc = chunk;
+					chunk->next_alloc = curr->next_alloc;
+					curr->next_alloc = chunk;
+					chunk->prev_alloc = curr;
 
-					chunk = (chunk -> prev_alloc) + (chunk -> prev_alloc) -> user_size + sizeof(struct allocation);//is this necessary so that it doesn't stay null so that not every allocation equals NULL essentially
+					chunk = (chunk->prev_alloc) + sizeof(struct allocation) + (chunk->prev_alloc)->user_size; //is this necessary so that it doesn't stay null so that not every allocation equals NULL essentially
 
 					return chunk; //return it before it can change it to being added to end of linked list
 				}
 				else {
-					curr = curr -> next_alloc;
+					curr = curr->next_alloc;
 				}
 			}
 		}
-		curr -> next_alloc = chunk;
-		chunk -> prev_alloc = curr;
-		struct allocation *prev = chunk -> prev_alloc;
-		chunk = prev + prev -> user_size + sizeof(struct allocation); //the pointer to the new chunk should be the previous chunk's ptr plus however much it was allocated for
-		chunk -> next_alloc = NULL; 
+		chunk = (char *) curr+sizeof(struct allocation)+curr->user_size;
+		chunk->user_size = size;
+		curr->next_alloc = chunk;
+		chunk->prev_alloc = curr;
+		chunk->next_alloc = NULL; 
 
 		return chunk;
 }
@@ -178,7 +177,7 @@ void free(void *ptr) {
 		//should I cast the void *ptr to char *
 
 		//would i start memsetting from the ptr or ptr - sizeof(chunk)
-		memset((char *) ptr - sizeof(struct allocation), '\0', chunk_to_free -> act_size);
+		memset((char *) ptr, '\0', sizeof(struct allocation) + chunk_to_free->user_size);
 	}
 
 	return;
