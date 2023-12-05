@@ -97,42 +97,33 @@ void *malloc(size_t size) {
 			sbrk(MIN_SBRK + size);
 		}
 
-		struct allocation *chunk = temp; //how do I allocate memory to this. And should it be initialized to NULL;
+		struct allocation *chunk;
 
-		chunk = add_chunk(chunk, size); //this will put it in the right place
-		return (char *) chunk + sizeof(struct allocation);
-	}
-
-	return 0;
-
-}
-
-struct allocation *add_chunk(struct allocation *chunk, size_t size) {
 		struct allocation *curr = head;
 		if (((char *) head != init_prgrm_brk) && (size <= (char *) head-init_prgrm_brk)) { //if the head was freed and now the space at the beginning of the heap is open. We will put it right at the start of the heap
+			
+			//how to deal with this ptr type mismatch
+			chunk = (struct allocation *) init_prgrm_brk;
+
 			head->prev_alloc = chunk;
 			chunk->next_alloc = head;
 			chunk->prev_alloc = NULL;
 
 			//this will put it at beginning of prgrm brk so that every other time the if space between current and next alloc case will be used
 
-			//how to deal with this ptr type mismatch
-			chunk = (struct allocation *) init_prgrm_brk;
 			head = chunk;
-			
-			//chunk->ptr = chunk->next_alloc->ptr - sizeof(chunk->next_alloc) - size; //this is if you put it right before the last allocated chunk and there is null space before it so this will happen multiple times
 			
 			return chunk;
 		}
 		else {
 			while (curr->next_alloc != NULL) { //traverse through the linked list until you get to last non-NULL node
-				if ((curr->next_alloc)-(curr+sizeof(struct allocation)+curr->user_size) >= size) { //if space between current and next alloc
+				if ((char *) (curr->next_alloc)-((char *) curr+sizeof(struct allocation)+curr->user_size) >= size) { //if space between current and next alloc
+					chunk = (struct allocation *) ((char *) curr + sizeof(struct allocation) + curr->user_size);
+					
 					(curr->next_alloc)->prev_alloc = chunk;
 					chunk->next_alloc = curr->next_alloc;
 					curr->next_alloc = chunk;
 					chunk->prev_alloc = curr;
-
-					chunk = (chunk->prev_alloc) + sizeof(struct allocation) + (chunk->prev_alloc)->user_size; //is this necessary so that it doesn't stay null so that not every allocation equals NULL essentially
 
 					return chunk; //return it before it can change it to being added to end of linked list
 				}
@@ -141,14 +132,21 @@ struct allocation *add_chunk(struct allocation *chunk, size_t size) {
 				}
 			}
 		}
-		chunk = (char *) curr+sizeof(struct allocation)+curr->user_size;
+			
+		chunk = (struct allocation *) ((char *) curr+sizeof(struct allocation)+curr->user_size);
 		chunk->user_size = size;
 		curr->next_alloc = chunk;
 		chunk->prev_alloc = curr;
 		chunk->next_alloc = NULL; 
 
-		return chunk;
+		return (char *) chunk + sizeof(struct allocation);
+	}
+
+	return 0;
+
 }
+
+
 
 void free(void *ptr) {
 	struct allocation *chunk_to_free = head;
@@ -329,7 +327,50 @@ struct allocation *create_chunk(size_t size, void *ptr) {
 
 
 
+/*
+ *struct allocation *add_chunk(struct allocation *chunk, size_t size) {
+		struct allocation *curr = head;
+		if (((char *) head != init_prgrm_brk) && (size <= (char *) head-init_prgrm_brk)) { //if the head was freed and now the space at the beginning of the heap is open. We will put it right at the start of the heap
+			head->prev_alloc = chunk;
+			chunk->next_alloc = head;
+			chunk->prev_alloc = NULL;
 
+			//this will put it at beginning of prgrm brk so that every other time the if space between current and next alloc case will be used
+
+			//how to deal with this ptr type mismatch
+			chunk = (struct allocation *) init_prgrm_brk;
+			head = chunk;
+			
+			//chunk->ptr = chunk->next_alloc->ptr - sizeof(chunk->next_alloc) - size; //this is if you put it right before the last allocated chunk and there is null space before it so this will happen multiple times
+			
+			return chunk;
+		}
+		else {
+			while (curr->next_alloc != NULL) { //traverse through the linked list until you get to last non-NULL node
+				if ((curr->next_alloc)-(curr+sizeof(struct allocation)+curr->user_size) >= size) { //if space between current and next alloc
+					(curr->next_alloc)->prev_alloc = chunk;
+					chunk->next_alloc = curr->next_alloc;
+					curr->next_alloc = chunk;
+					chunk->prev_alloc = curr;
+
+					chunk = (chunk->prev_alloc) + sizeof(struct allocation) + (chunk->prev_alloc)->user_size; //is this necessary so that it doesn't stay null so that not every allocation equals NULL essentially
+
+					return chunk; //return it before it can change it to being added to end of linked list
+				}
+				else {
+					curr = curr->next_alloc;
+				}
+			}
+		}
+		chunk = (char *) curr+sizeof(struct allocation)+curr->user_size;
+		chunk->user_size = size;
+		curr->next_alloc = chunk;
+		chunk->prev_alloc = curr;
+		chunk->next_alloc = NULL; 
+
+		return chunk;
+}
+ */ 
  
 
 
