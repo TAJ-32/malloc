@@ -66,7 +66,7 @@ void *malloc(size_t size) {
 		head = sbrk(MIN_SBRK + size); //arbitrary size I chose. the head will start as the heap itself. this is how we creat the linked list. actually shouldo do sbrk(5000 + size);
 
 		break_loc = (char *) head + (MIN_SBRK + size);
-		//head -> user_size = MIN_SBRK + size - sizeof(struct allocation); //amount of free space
+		//head->user_size = MIN_SBRK + size - sizeof(struct allocation); //amount of free space
 
 		head->user_size = size;
 
@@ -85,11 +85,11 @@ void *malloc(size_t size) {
 		//char *bot_of_heap = head->ptr - sizeof(head); //bottom of the heap
 		int amt_allocated = 0;
 		struct allocation *temp = head;
-		amt_allocated += temp -> user_size;
+		amt_allocated += temp->user_size;
 
 		while (temp->next_alloc != NULL) {
-			temp = temp -> next_alloc;
-			amt_allocated += temp -> user_size;
+			temp = temp->next_alloc;
+			amt_allocated += temp->user_size;
 		}
 
 
@@ -154,7 +154,7 @@ void free(void *ptr) {
 //	ptr = (char *) ptr;
 
 	while ((char *) chunk_to_free != ((char *) ptr - sizeof(struct allocation))) {
-		chunk_to_free = chunk_to_free -> next_alloc;
+		chunk_to_free = chunk_to_free->next_alloc;
 	}
 	
 	//freeing the head case
@@ -165,8 +165,8 @@ void free(void *ptr) {
 
 	}
 	else {
-		(chunk_to_free -> prev_alloc) -> next_alloc = chunk_to_free -> next_alloc;
-		(chunk_to_free -> next_alloc) -> prev_alloc  = chunk_to_free -> prev_alloc;
+		(chunk_to_free->prev_alloc)->next_alloc = chunk_to_free->next_alloc;
+		(chunk_to_free->next_alloc)->prev_alloc  = chunk_to_free->prev_alloc;
 
 		//are these next two lines even necessary?
 		chunk_to_free->next_alloc = NULL; 
