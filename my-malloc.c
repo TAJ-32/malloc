@@ -2,6 +2,8 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdbool.h>
+#include <errno.h>
+#include <stdint.h>
 
 //is there gonna be a problem with all of these variables resetting everytime malloc is called? Or no because it's all in the heap?
 
@@ -184,6 +186,11 @@ void free(void *ptr) {
 
 void *calloc(size_t nelem, size_t elsize) {
 
+	if ((nelem * elsize) > SIZE_MAX) {
+		errno = ENOMEM;
+		return NULL;
+	}
+
 	void *ptr = malloc(nelem * elsize); //protect against integer overflow
 	if (ptr != NULL) {
 		memset(ptr, '\0', nelem * elsize);
@@ -202,7 +209,7 @@ void *realloc(void *ptr, size_t size) {
 	}
 	struct allocation *chunk = head;
 
-	while (chunk != ptr) {
+	while ((char *) chunk + sizeof(struct allocation) != ptr) {
 		chunk = chunk->next_alloc;
 	}
 
@@ -236,7 +243,7 @@ size_t malloc_usable_size(void *ptr) {
 		chunk = chunk->next_alloc;
 	}
 
-	int size = chunk->user_size;
+	size_t size = chunk->user_size;
 
 	struct allocation *a;
 

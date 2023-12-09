@@ -4,29 +4,17 @@
 
 int main(int argc, char *argv[])
 {
-	char *a = malloc(1000);
-	*a = 'h';
+	char *ptr = malloc(8);
 
-	char *b = malloc(2500);
-	*b = 'g';
+	*ptr = 'a';
+	*(ptr + 1) = 'b';
 
-	char *c = malloc(1000);
-	*c = 'e';
+	char *ptr2 = realloc(ptr, 12);
+	*(ptr2 + 2) = 'c';
+	for (int i = 0; i < 3; i++) {
+		printf("%c ", *(ptr2 + i));
+	}
 
-	free(b);
-	
-	char *d = malloc(500);
-
-
-//	free(a);
-
-//	char *c = malloc(1000);
-	//c = "meh";
-
-
-
-	//memcpy(a, "asdf", 4);	
-
-	//free(ptr);
-	//printf("This shouldn't work\n");
+	getchar();
+	return 0;
 }
