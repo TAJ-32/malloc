@@ -239,17 +239,19 @@ size_t malloc_usable_size(void *ptr) {
 
 	struct allocation *chunk = head;
 
-	while (chunk != ptr) {
+	while ((char *) chunk + sizeof(struct allocation) != ptr) {
 		chunk = chunk->next_alloc;
 	}
 
 	size_t size = chunk->user_size;
 
-	struct allocation *a;
-
+	char *a;
+	int i;
 	//go until the thing in the chunk of memory represented by a holds NULL
-	for (a=chunk; a; a++) {
-		size -= 1*sizeof(*a); //subtract every part of memory taken up by a variable of whatever size the type is
+	for (a=(char *) chunk + sizeof(struct allocation), i=0; i < chunk->user_size; a++, i++) {
+		if (*a != NULL) {
+			size -= 1*sizeof(*a); //subtract every part of memory taken up by a variable of whatever size the type is
+		}
 	}
 
 	return size;

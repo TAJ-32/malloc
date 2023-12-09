@@ -10,7 +10,7 @@ test-malloc: test-malloc.c
 
 .PHONE: ex
 ex:
-	LD_PRELOAD=./my-malloc.so ./test-malloc
+	LD_PRELOAD=./my-malloc.so ls
 
 .PHONE: debug
 debug: 
