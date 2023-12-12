@@ -155,16 +155,27 @@ void free(void *ptr) {
 
 //	ptr = (char *) ptr;
 
+	if (ptr == NULL) {
+		return;
+	}
+
 	while ((char *) chunk_to_free != ((char *) ptr - sizeof(struct allocation))) {
 		chunk_to_free = chunk_to_free->next_alloc;
 	}
 	
 	//freeing the head case
 	if (chunk_to_free == head) {
+
+		if (head->next_alloc != NULL) {
 		head = head->next_alloc;
 		head->prev_alloc = NULL;
 		memset((char *) ptr - sizeof(struct allocation), '\0', chunk_to_free->act_size);
-
+		}
+		else {
+			head->prev_alloc = NULL;
+			head = NULL;
+			return;
+		}
 	}
 	else {
 		(chunk_to_free->prev_alloc)->next_alloc = chunk_to_free->next_alloc;
@@ -186,16 +197,21 @@ void free(void *ptr) {
 
 void *calloc(size_t nelem, size_t elsize) {
 
-	if ((nelem * elsize) > SIZE_MAX) {
+	int product = nelem * elsize;
+
+	if (product / elsize != nelem) {
 		errno = ENOMEM;
 		return NULL;
 	}
+	else {
+		void *ptr = malloc(product); //protect against integer overflow
 
-	void *ptr = malloc(nelem * elsize); //protect against integer overflow
-	if (ptr != NULL) {
-		memset(ptr, '\0', nelem * elsize);
+		if (ptr != NULL) {
+			memset(ptr, '\0', nelem * elsize);
+		}
+
 	}
-	return ptr;
+	return NULL;
 }
 
 void *realloc(void *ptr, size_t size) {
