@@ -23,10 +23,6 @@ void *realloc(void *ptr, size_t size);
 
 size_t malloc_usable_size(void *ptr);
 
-struct allocation *add_chunk(struct allocation *chunk, size_t size); 
-
-struct allocation *split(struct allocation *curr, size_t size);
-
 struct allocation { 
 	int user_size;
 	int act_size; //actual size of whole chunk, sbrk_size + meta_size;
@@ -35,24 +31,13 @@ struct allocation {
 	struct allocation *prev_alloc;
 };
 
-struct l_list {
-	int size;
-	struct allocation *head; //will represent the beginning of the linkedlist that starts at beginning of the heap.
-				 //Before any malloc is called, this is just a pointer to the beginning and end of the heap which is just that starting line
-};
-
-//search for free chunk and split as needed or call sbrk again
-
-struct l_list *create_list(void);
-
-struct allocation *create_chunk(size_t size, void *ptr);
-
 static struct allocation *head = NULL;
 
 
 //do we need to be making the metadata for the next allocation before it is even called
 void *malloc(size_t size) {
 
+	size = ((size / 16) + 1) * 16;
 	/*
 	 *1. Make the head NULL so that you have the beginning of the linked list as the metadata and itll point to nothing both direction.
 	 *2. For every other allocation, set the struct pointer to the last pointer+sizeof(struct)+user_size
@@ -102,7 +87,7 @@ void *malloc(size_t size) {
 		struct allocation *chunk;
 
 		struct allocation *curr = head;
-		if (((char *) head != init_prgrm_brk) && (size <= (char *) head-init_prgrm_brk)) { //if the head was freed and now the space at the beginning of the heap is open. We will put it right at the start of the heap
+		if (((char *) head != init_prgrm_brk) && (size + sizeof(struct allocation) <= (char *) head-init_prgrm_brk)) { //if the head was freed and now the space at the beginning of the heap is open. We will put it right at the start of the heap
 			
 			//how to deal with this ptr type mismatch
 			chunk = (struct allocation *) init_prgrm_brk;
@@ -119,7 +104,7 @@ void *malloc(size_t size) {
 		}
 		else {
 			while (curr->next_alloc != NULL) { //traverse through the linked list until you get to last non-NULL node
-				if ((char *) (curr->next_alloc)-((char *) curr+sizeof(struct allocation)+curr->user_size) >= size) { //if space between current and next alloc
+				if ((char *) (curr->next_alloc)-((char *) curr+sizeof(struct allocation)+curr->user_size) >= size + sizeof(struct allocation)) { //if space between current and next alloc
 					chunk = (struct allocation *) ((char *) curr + sizeof(struct allocation) + curr->user_size);
 					chunk->user_size = size;	
 					(curr->next_alloc)->prev_alloc = chunk;
@@ -129,9 +114,7 @@ void *malloc(size_t size) {
 
 					return (char *) chunk + sizeof(struct allocation); //return it before it can change it to being added to end of linked list
 				}
-				else {
-					curr = curr->next_alloc;
-				}
+				curr = curr->next_alloc;
 			}
 		}
 			
@@ -167,9 +150,8 @@ void free(void *ptr) {
 	if (chunk_to_free == head) {
 
 		if (head->next_alloc != NULL) {
-		head = head->next_alloc;
-		head->prev_alloc = NULL;
-		memset((char *) ptr - sizeof(struct allocation), '\0', chunk_to_free->act_size);
+			head = head->next_alloc;
+			head->prev_alloc = NULL;
 		}
 		else {
 			head->prev_alloc = NULL;
@@ -179,7 +161,9 @@ void free(void *ptr) {
 	}
 	else {
 		(chunk_to_free->prev_alloc)->next_alloc = chunk_to_free->next_alloc;
-		(chunk_to_free->next_alloc)->prev_alloc  = chunk_to_free->prev_alloc;
+		if (chunk_to_free->next_alloc) {
+			(chunk_to_free->next_alloc)->prev_alloc  = chunk_to_free->prev_alloc;
+		}
 
 		//are these next two lines even necessary?
 		chunk_to_free->next_alloc = NULL; 
@@ -203,15 +187,14 @@ void *calloc(size_t nelem, size_t elsize) {
 		errno = ENOMEM;
 		return NULL;
 	}
-	else {
-		void *ptr = malloc(product); //protect against integer overflow
 
-		if (ptr != NULL) {
-			memset(ptr, '\0', nelem * elsize);
-		}
+	void *ptr = malloc(product); //protect against integer overflow
 
+	if (ptr != NULL) {
+		memset(ptr, '\0', nelem * elsize);
 	}
-	return NULL;
+
+	return ptr;
 }
 
 void *realloc(void *ptr, size_t size) {
@@ -241,9 +224,6 @@ void *realloc(void *ptr, size_t size) {
 		free(old);
 	}
 
-	
-
-
 	return ptr;
 }
 
@@ -261,6 +241,7 @@ size_t malloc_usable_size(void *ptr) {
 
 	size_t size = chunk->user_size;
 
+	/*
 	char *a;
 	int i;
 	//go until the thing in the chunk of memory represented by a holds NULL
@@ -269,6 +250,7 @@ size_t malloc_usable_size(void *ptr) {
 			size -= 1*sizeof(*a); //subtract every part of memory taken up by a variable of whatever size the type is
 		}
 	}
+	*/
 
 	return size;
 }

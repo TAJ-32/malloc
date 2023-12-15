@@ -10,11 +10,11 @@ test-malloc: test-malloc.c
 
 .PHONE: ex
 ex:
-	LD_PRELOAD=./my-malloc.so ls
+	LD_PRELOAD=./my-malloc.so ls -l
 
 .PHONE: debug
 debug: 
-	gdb --args env LD_PRELOAD=./my-malloc.so ./test-malloc
+	gdb --args env LD_PRELOAD=./my-malloc.so ls -l
 
 .PHONE: clean
 clean:
