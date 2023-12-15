@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <errno.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 //is there gonna be a problem with all of these variables resetting everytime malloc is called? Or no because it's all in the heap?
 
@@ -12,16 +13,6 @@
 
 static char* break_loc = 0;
 static char* init_prgrm_brk = 0;
-
-void *malloc(size_t size);
-
-void free(void *ptr);
-
-void *calloc(size_t nelem, size_t elsize);
-
-void *realloc(void *ptr, size_t size);
-
-size_t malloc_usable_size(void *ptr);
 
 struct allocation { 
 	int user_size;
