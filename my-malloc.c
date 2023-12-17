@@ -33,12 +33,10 @@ void *malloc(size_t size) {
 		init_prgrm_brk = sbrk(0);
 
 		if (init_prgrm_brk == (void *) -1) {
-			perror("sbrk() error");
 			return NULL;
 		}
 
 		if ((head = sbrk(MIN_SBRK + size)) == (void *) -1) { //arbitrary size I chose. the head will start as the heap itself. this is how we creat the linked list. actually shouldo do sbrk(5000 + size);
-			perror("sbrk() error");
 			return NULL;
 		}
 		break_loc = (char *) head + (MIN_SBRK + size);
@@ -61,11 +59,9 @@ void *malloc(size_t size) {
 
 		void *brk_check;
 		if (init_prgrm_brk + amt_allocated + size > break_loc) {
-			brk_check = sbrk(MIN_SBRK + size);
-		}
-		if (brk_check == (void *) -1) {
-			perror("sbrk() error");
-			return NULL;
+			if ((brk_check = sbrk(MIN_SBRK + size)) == (void *) -1) {
+				return NULL;
+			}
 		}
 
 		struct allocation *chunk;
@@ -104,7 +100,7 @@ void *malloc(size_t size) {
 		chunk->next_alloc = NULL; 
 		return (char *) chunk + sizeof(struct allocation);
 	}
-	return 0;
+	return NULL;
 }
 
 void free(void *ptr) {
@@ -182,6 +178,9 @@ void *realloc(void *ptr, size_t size) {
 
 	void *old = ptr;
 	ptr = malloc(size);
+	if (ptr == NULL) {
+		return NULL;
+	}
 	memcpy(ptr, old, chunk->user_size);
 	free(old);
 	return ptr;
